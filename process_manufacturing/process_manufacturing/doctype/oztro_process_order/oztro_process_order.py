@@ -7,4 +7,7 @@ import frappe
 from frappe.model.document import Document
 
 class OztroProcessOrder(Document):
-	pass
+	def get_process_details(self):
+		#	Set costing_method
+		self.costing_method = frappe.db.get_value("Oztro Process", self.process_name, "costing_method")
+		
