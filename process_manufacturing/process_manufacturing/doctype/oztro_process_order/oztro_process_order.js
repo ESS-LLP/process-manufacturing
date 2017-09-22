@@ -8,5 +8,19 @@ frappe.ui.form.on('Oztro Process Order', {
 				filters: {"process_type": frm.doc.process_type}
 			}
 		});
+	},
+	process_name: function(frm) {
+		if(frm.doc.process_name){
+			frappe.call({
+				doc: frm.doc,
+				method: "get_process_details",
+				callback: function(r) {
+					refresh_field("costing_method");
+					refresh_field("finished_products");
+					refresh_field("scrap");
+					refresh_field("materials");
+				}
+			});
+		}
 	}
 });
