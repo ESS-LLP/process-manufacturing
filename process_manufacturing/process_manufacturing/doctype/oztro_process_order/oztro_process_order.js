@@ -47,23 +47,18 @@ var start_process_order = function(frm){
 				frappe.throw()
 			}
 		}
-		/*frappe.confirm(
-				'Are you sure to Start?',
-				function(){*/
-					frappe.call({
-						doc: frm.doc,
-						method: "start_processing",
-						callback: function(r) {
-							frm.reload_doc()
-							var doclist = frappe.model.sync(r.message);
-							frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-						}
-					});
-				/*},
-				function(){
-					window.close();
-				}
-		)*/
+		frappe.call({
+			doc: frm.doc,
+			method: "start_finish_processing",
+			args:{
+				"status": "Start"
+			},
+			callback: function(r) {
+				frm.reload_doc()
+				var doclist = frappe.model.sync(r.message);
+				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+			}
+		});
 	}
 }
 
@@ -74,7 +69,10 @@ var finish_process_order = function(frm){
 				function(){
 					frappe.call({
 						doc: frm.doc,
-						method: "finish_processing",
+						method: "start_finish_processing",
+						args:{
+							"status": "Finish"
+						},
 						callback: function(r) {
 							frm.reload_doc()
 							var doclist = frappe.model.sync(r.message);
