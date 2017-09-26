@@ -11,7 +11,7 @@ frappe.ui.form.on('Oztro Process Order', {
 		}
 		if(!frm.doc.__islocal && frm.doc.status == 'Start'){
 			var finish_btn = frm.add_custom_button(__('Finish'), function(){
-				stop_process_order(frm)
+				finish_process_order(frm)
 			});
 			finish_btn.addClass('btn-primary')
 		}
@@ -40,37 +40,82 @@ frappe.ui.form.on('Oztro Process Order', {
 });
 
 var start_process_order = function(frm){
-	me.frm.set_value("status", "Start");
-	//start_prompt()
-	cur_frm.save()
-}
-
-var stop_process_order = function(frm){
-	me.frm.set_value("status", "Finish");
-	cur_frm.save()
-}
-
-/*
-var start_prompt = function(frm) {
-	frappe.prompt({fieldtype:"Float", label: __("Qty for {0}", ["Processing"]), fieldname:"qty",
-		description: __("Max: {0}", [10]), 'default': 10 },
-		function(data) {
-			if(data.quantity > 10) {
-				frappe.msgprint(__("Quantity must not be more than {0}", [10]));
-				return;
+	if(frm.doc.materials){
+		for(item in frm.doc.materials){
+			if(frm.doc.materials[item].quantity <= 0){
+				frappe.msgprint('Quantity of material should be greater than zero.', "Validation Error");
+				frappe.throw()
 			}
+		}
+		/*frappe.confirm(
+				'Are you sure to Start?',
+				function(){*/
+					frappe.call({
+						doc: frm.doc,
+						method: "start_processing",
+						callback: function(r) {
+							frm.reload_doc()
+							var doclist = frappe.model.sync(r.message);
+							frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+						}
+					});
+				/*},
+				function(){
+					window.close();
+				}
+		)*/
+	}
+}
+
+var finish_process_order = function(frm){
+	if(frm.doc.finished_products){
+		frappe.confirm(
+				'Are you sure to Finish?',
+				function(){
+					frappe.call({
+						doc: frm.doc,
+						method: "finish_processing",
+						callback: function(r) {
+							frm.reload_doc()
+							var doclist = frappe.model.sync(r.message);
+							frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+						}
+					});
+				},
+				function(){
+					window.close();
+				}
+		)
+	}
+}
+
+/*var start_prompt = function(frm) {
+	let fields = []
+	$.each(frm.doc.finished_products || [], function(i, row) {
+		console.log(i);
+		console.log(row);
+		fields.push({
+			fieldtype: "Float",
+			label: __("Quantity of {0} for {1}", [row.item_name,"Processing"]),
+			fieldname: "qty_"+row.name
+		});
+	})
+	/*frm.doc.materials.forEach(function(frm) {
+		console.log("ASSSSSSSSSSSSS");
+	})*/
+	/*frappe.prompt(
+		fields,
+		function(data) {
+			console.log(data);
 			frappe.call({
-				method:"erpnext.manufacturing.doctype.production_order.production_order.make_stock_entry",
+				doc: frm.doc,
+				method: "start_processing",
 				args: {
-					"production_order_id": frm.doc.name,
-					"purpose": "Processing",
-					"qty": data.quantity
+					'qty': data.qty
 				},
 				callback: function(r) {
-					
-					var doclist = frappe.model.sync(r.message);
-					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-
+					//refresh_field("materials");
+					frm.reload_doc()
 				}
 			});
 		}, __("Select Quantity"), __("Make"));
