@@ -27,41 +27,29 @@ class OztroProcessOrder(Document):
 
 	def set_se_items_start(self, se):
 		for item in self.materials:
-			if item.quantity > 0:
-				se_item = se.append("items")
-				se_item.item_code = item.item
-				se_item.qty = item.quantity
-				se_item.s_warehouse = frappe.db.get_value("Item", item.item, "default_warehouse")
-				se_item.t_warehouse = se.from_warehouse
-
+			se = self.set_se_items(se, item, frappe.db.get_value("Item", item.item, "default_warehouse"), se.from_warehouse)
 		return se
 
 	def set_se_items_finish(self, se):
 		for item in self.materials:
-			if item.quantity > 0:
-				se_item = se.append("items")
-				se_item.item_code = item.item
-				se_item.qty = item.quantity
-				se_item.s_warehouse = se.from_warehouse
+			se = self.set_se_items(se, item, se.from_warehouse, None)
 
 		for item in self.finished_products:
-			if item.quantity > 0:
-				se_item = se.append("items")
-				se_item.item_code = item.item
-				se_item.qty = item.quantity
-				se_item.t_warehouse = se.to_warehouse
+			se = self.set_se_items(se, item, None, se.to_warehouse)
 
 		for item in self.scrap:
-			if item.quantity > 0:
-				se_item = se.append("items")
-				se_item.item_code = item.item
-				se_item.qty = item.quantity
-				se_item.t_warehouse = self.scrap_warehouse
+			se = self.set_se_items(se, item, None, self.scrap_warehouse)
 
 		return se
 
-	def set_se_items(self, se, table):
-		table.string()
+	def set_se_items(self, se, item, s_wh, t_wh):
+		if item.quantity > 0:
+			se_item = se.append("items")
+			se_item.item_code = item.item
+			se_item.qty = item.quantity
+			se_item.s_warehouse = s_wh
+			se_item.t_warehouse = t_wh
+		return se
 
 	def make_stock_entry(self, status):
 		if self.wip_warehouse:
