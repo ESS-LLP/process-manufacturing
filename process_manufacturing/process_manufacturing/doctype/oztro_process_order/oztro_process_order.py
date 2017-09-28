@@ -43,13 +43,31 @@ class OztroProcessOrder(Document):
 		return se
 
 	def set_se_items(self, se, item, s_wh, t_wh):
+		expense_account, cost_center = frappe.db.get_values("Company", self.company, \
+				["default_expense_account", "cost_center"])[0]
+		item_name, stock_uom, description, item_expense_account, item_cost_center = frappe.db.get_values("Item", item.item, \
+		["item_name", "stock_uom", "description", "expense_account", "buying_cost_center"])[0]
+
 		if item.quantity > 0:
 			se_item = se.append("items")
 			se_item.item_code = item.item
 			se_item.qty = item.quantity
 			se_item.s_warehouse = s_wh
 			se_item.t_warehouse = t_wh
-		return se
+			se_item.item_name = item_name
+			se_item.description = description
+			se_item.uom = stock_uom
+			se_item.stock_uom = stock_uom
+
+			se_item.expense_account = item_expense_account or expense_account
+			se_item.cost_center = item_cost_center or cost_center
+
+			# in stock uom
+			se_item.transfer_qty = item.quantity
+			se_item.conversion_factor = 1.00
+
+		if se.items:
+			return se
 
 	def make_stock_entry(self, status):
 		if self.wip_warehouse:
@@ -67,7 +85,7 @@ class OztroProcessOrder(Document):
 		stock_entry.from_warehouse = wip_warehouse
 		stock_entry.to_warehouse = fg_warehouse
 		if status == "Start":
-			self.set_se_items_start(stock_entry)
+			stock_entry = self.set_se_items_start(stock_entry)
 		if status == "Finish":
 			stock_entry = self.set_se_items_finish(stock_entry)
 		return stock_entry.as_dict()
