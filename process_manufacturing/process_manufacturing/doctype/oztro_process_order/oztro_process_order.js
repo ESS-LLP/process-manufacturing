@@ -19,9 +19,31 @@ frappe.ui.form.on('Oztro Process Order', {
 	process_type: function(frm){
 		frm.set_query("process_name", function () {
 			return {
-				filters: {"process_type": frm.doc.process_type}
+				filters: {"department": frm.doc.department, "process_type": frm.doc.process_type}
 			}
 		});
+	},
+	department: function(frm){
+		if(frm.doc.department){
+			frappe.call({
+				"method": "frappe.client.get",
+				args: {
+					doctype: "Oztro Manufacturing Department",
+					name: frm.doc.department
+				},
+				callback: function (data) {
+					frappe.model.set_value(frm.doctype,frm.docname, "wip_warehouse", data.message.wip_warehouse);
+					frappe.model.set_value(frm.doctype,frm.docname, "fg_warehouse", data.message.fg_warehouse);
+					frappe.model.set_value(frm.doctype,frm.docname, "scrap_warehouse", data.message.scrap_warehouse);
+					frappe.model.set_value(frm.doctype,frm.docname, "src_warehouse", data.message.src_warehouse);
+				}
+			});
+			frm.set_query("process_name", function () {
+				return {
+					filters: {"department": frm.doc.department, "process_type": frm.doc.process_type}
+				}
+			});
+		}
 	},
 	process_name: function(frm) {
 		if(frm.doc.process_name){

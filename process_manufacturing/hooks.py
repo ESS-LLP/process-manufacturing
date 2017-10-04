@@ -11,6 +11,12 @@ app_color = "grey"
 app_email = "info@earthianslive.com"
 app_license = "MIT"
 
+fixtures = ["Custom Field"]
+doc_events = {
+ 	"Stock Entry": {
+ 		"on_submit": "process_manufacturing.process_manufacturing.doctype.oztro_process_order.oztro_process_order.submit_se"
+    }
+}
 # Includes in <head>
 # ------------------
 
@@ -119,4 +125,3 @@ app_license = "MIT"
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "process_manufacturing.event.get_events"
 # }
-
