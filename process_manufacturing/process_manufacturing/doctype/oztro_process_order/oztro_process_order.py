@@ -5,6 +5,8 @@
 from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
+from frappe.utils import get_datetime
+from frappe import _
 
 class OztroProcessOrder(Document):
 	def get_process_details(self):
@@ -68,6 +70,11 @@ class OztroProcessOrder(Document):
 		item_name, stock_uom, description, item_expense_account, item_cost_center = frappe.db.get_values("Item", item.item, \
 		["item_name", "stock_uom", "description", "expense_account", "buying_cost_center"])[0]
 
+		if not expense_account and not item_expense_account:
+			frappe.throw(_("Please update default Default Cost of Goods Sold Account for company {0}").format(self.company))
+
+		if not cost_center and not item_cost_center:
+			frappe.throw(_("Please update default Cost Center for company {0}").format(self.company))
 
 		if item.quantity > 0:
 			sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
@@ -156,6 +163,7 @@ def submit_se(doc, method):
 		oztro_po = frappe.get_doc("Oztro Process Order", doc.oztro_process_order)
 		if oztro_po.status == "Open":
 			oztro_po.status = "Start"
+			oztro_po.start_dt = get_datetime()
 		elif oztro_po.status == "Start":
 			oztro_po.status = "Finish"
 		oztro_po.save()
