@@ -5,7 +5,7 @@
 from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
-from frappe.utils import get_datetime
+from frappe.utils import get_datetime, time_diff_in_hours
 from frappe import _
 
 class OztroProcessOrder(Document):
@@ -16,55 +16,94 @@ class OztroProcessOrder(Document):
 		process = frappe.get_doc("Oztro Process", self.process_name)
 		if process:
 			if process.materials:
-				add_item_in_table(self, process.materials, "materials")
+				self.add_item_in_table(process.materials, "materials")
 			if process.finished_products:
-				add_item_in_table(self, process.finished_products, "finished_products")
+				self.add_item_in_table(process.finished_products, "finished_products")
 			if process.scrap:
-				add_item_in_table(self, process.scrap, "scrap")
+				self.add_item_in_table(process.scrap, "scrap")
 
 	def start_finish_processing(self, status):
+		if status == "Finish":
+			if not self.end_dt:
+				self.end_dt = get_datetime()
+		self.save()
 		return self.make_stock_entry(status)
 
 	def set_se_items_start(self, se):
+		#set source and target warehouse
+		se.from_warehouse = self.src_warehouse
+		se.to_warehouse = self.wip_warehouse
 		for item in self.materials:
-			src_wh = frappe.db.get_value("Item", item.item, "default_warehouse")
-			se = self.set_se_items(se, item, src_wh, se.from_warehouse, "Start", None, None)
+			if self.src_warehouse:
+				src_wh = self.src_warehouse
+			else:
+				src_wh = frappe.db.get_value("Item", item.item, "default_warehouse")
+			#create stock entry lines
+			se = self.set_se_items(se, item, src_wh, self.wip_warehouse, False)
 
 		return se
 
 	def set_se_items_finish(self, se):
+		#set from and to warehouse
+		se.from_warehouse = self.wip_warehouse
+		se.to_warehouse = self.fg_warehouse
+
 		se_materials = frappe.get_doc("Stock Entry",{"oztro_process_order": self.name, "docstatus": '1'})
+		#get items to consume from previous stock entry or append to items
+		#TODO allow multiple raw material transfer
+		raw_material_cost = 0
+		operating_cost = 0
 		if se_materials:
+			raw_material_cost = se_materials.total_incoming_value
 			se.items = se_materials.items
 			for item in se.items:
 				item.s_warehouse = se.from_warehouse
 				item.t_warehouse = None
 		else:
 			for item in self.materials:
-				se = self.set_se_items(se, item, se.from_warehouse, None, "Finish", None, None)
+				se = self.set_se_items(se, item, se.from_warehouse, None, False)
+				#TODO calc raw_material_cost
 
+		#no timesheet entries for Oztro, calculate operating cost based on workstation hourly rate and process start, end
+		hourly_rate = frappe.db.get_value("Workstation", self.workstation, "hour_rate")
+		if hourly_rate:
+			hours = time_diff_in_hours(self.end_dt, self.start_dt)
+			operating_cost = hours * float(hourly_rate)
+		production_cost = raw_material_cost + operating_cost
+
+		#calc total_qty and total_sale_value
 		qty_of_total_production = 0
 		total_sale_value = 0
 		for item in self.finished_products:
 			qty_of_total_production = float(qty_of_total_production) + item.quantity
-			sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
-			if sale_value_of_pdt:
-				total_sale_value += float(sale_value_of_pdt) * item.quantity
+			if self.costing_method == "Relative Sales Value":
+				sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
+				if sale_value_of_pdt:
+					total_sale_value += float(sale_value_of_pdt) * item.quantity
+				else:
+					frappe.throw(_("Selling price not set for item {0}").format(item.item))
+
+		#TODO optionally include/exclude scrap from total cost/qty
 		for item in self.scrap:
 			qty_of_total_production = float(qty_of_total_production + item.quantity)
-			sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
-			if sale_value_of_pdt:
-				total_sale_value += float(sale_value_of_pdt) * item.quantity
+			if self.costing_method == "Relative Sales Value":
+				sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
+				if sale_value_of_pdt:
+					total_sale_value += float(sale_value_of_pdt) * item.quantity
+				else:
+					frappe.throw(_("Selling price not set for item {0}").format(item.item))
 
+		#add Stock Entry Items for produced goods and scrap
 		for item in self.finished_products:
-			se = self.set_se_items(se, item, None, se.to_warehouse, "Finish", qty_of_total_production, total_sale_value)
+			se = self.set_se_items(se, item, None, se.to_warehouse, True, qty_of_total_production, total_sale_value, production_cost)
 
+		#TODO optionally include/exclude scrap from rate calc
 		for item in self.scrap:
-			se = self.set_se_items(se, item, None, self.scrap_warehouse, "Finish", qty_of_total_production, total_sale_value)
+			se = self.set_se_items(se, item, None, self.scrap_warehouse, True, qty_of_total_production, total_sale_value, production_cost)
 
 		return se
 
-	def set_se_items(self, se, item, s_wh, t_wh, status, qty_of_total_production, total_sale_value):
+	def set_se_items(self, se, item, s_wh, t_wh, calc_basic_rate=False, qty_of_total_production=None, total_sale_value=None, production_cost=None):
 		expense_account, cost_center = frappe.db.get_values("Company", self.company, \
 				["default_expense_account", "cost_center"])[0]
 		item_name, stock_uom, description, item_expense_account, item_cost_center = frappe.db.get_values("Item", item.item, \
@@ -77,7 +116,6 @@ class OztroProcessOrder(Document):
 			frappe.throw(_("Please update default Cost Center for company {0}").format(self.company))
 
 		if item.quantity > 0:
-			sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
 			se_item = se.append("items")
 			se_item.item_code = item.item
 			se_item.qty = item.quantity
@@ -95,48 +133,25 @@ class OztroProcessOrder(Document):
 			se_item.transfer_qty = item.quantity
 			se_item.conversion_factor = 1.00
 
-			if status == "Start":
-			  item_details = se.run_method( "get_item_details",args = (frappe._dict(
-			    {"item_code": item.item, "company": self.company, "uom": "Nos", 's_warehouse': s_wh})), for_update=True)
+			item_details = se.run_method( "get_item_details",args = (frappe._dict(
+			{"item_code": item.item, "company": self.company, "uom": stock_uom, 's_warehouse': s_wh})), for_update=True)
 
-			  for f in ("uom", "stock_uom", "description", "item_name", "expense_account",
-			    "cost_center", "conversion_factor"):
-			      if f in ["stock_uom", "conversion_factor"] or not item.get(f):
-			        se_item.set(f, item_details.get(f))
+			for f in ("uom", "stock_uom", "description", "item_name", "expense_account",
+			"cost_center", "conversion_factor"):
+				se_item.set(f, item_details.get(f))
 
-			if status == "Finish":
+			if calc_basic_rate:
+				if self.costing_method == "Physical Measurement":
+					se_item.basic_rate = production_cost/qty_of_total_production
+				elif self.costing_method == "Relative Sales Value":
+					sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
+					se_item.basic_rate = (float(sale_value_of_pdt) * float(production_cost)) / float(total_sale_value)
 
-				se_materials = frappe.get_doc("Stock Entry",{"oztro_process_order": self.name, "docstatus": '1'})
-				if se_materials:
-					total_production_cost = se_materials.total_incoming_value
-				se_item.basic_rate = self.basic_rate(item.quantity, qty_of_total_production, sale_value_of_pdt, total_sale_value, total_production_cost)
-
-		if se.items:
-			return se
-
-	def basic_rate(self, qty_of_pdt, total_qty, sale_value_of_pdt, total_sale_value, total_production_cost):
-		if total_production_cost > 0 and total_sale_value > 0 and qty_of_pdt > 0 and total_qty > 0:
-			if self.costing_method == "Relative Sales Value":
-				basic_rate = (float(sale_value_of_pdt) * float(total_production_cost)) / float(total_sale_value)
-			if self.costing_method == "Physical measurement":
-				basic_rate = float(total_production_cost) / float(total_qty)
-
-			return basic_rate
+		return se
 
 	def make_stock_entry(self, status):
-		if self.wip_warehouse:
-			wip_warehouse = self.wip_warehouse
-		else:
-			wip_warehouse = frappe.db.get_single_value("Manufacturing Settings", "default_wip_warehouse")
-		if self.fg_warehouse:
-			fg_warehouse = self.fg_warehouse
-		else:
-			fg_warehouse = frappe.db.get_single_value("Manufacturing Settings", "default_fg_warehouse")
-
 		stock_entry = frappe.new_doc("Stock Entry")
 		stock_entry.oztro_process_order = self.name
-		stock_entry.from_warehouse = wip_warehouse
-		stock_entry.to_warehouse = fg_warehouse
 		if status == "Start":
 			stock_entry.purpose = "Material Transfer for Manufacture"
 			stock_entry = self.set_se_items_start(stock_entry)
@@ -146,16 +161,12 @@ class OztroProcessOrder(Document):
 
 		return stock_entry.as_dict()
 
-def add_item_in_table(self, table_value, table_name):
-	clear_table(self, table_name)
-
-	for item in table_value:
-		po_item = self.append(table_name, {})
-		po_item.item = item.item
-		po_item.item_name = item.item_name
-
-def clear_table(self, table_name):
-	self.set(table_name, [])
+	def add_item_in_table(self, table_value, table_name):
+		self.set(table_name, [])
+		for item in table_value:
+			po_item = self.append(table_name, {})
+			po_item.item = item.item
+			po_item.item_name = item.item_name
 
 @frappe.whitelist()
 def submit_se(doc, method):
