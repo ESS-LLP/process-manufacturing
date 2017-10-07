@@ -2,6 +2,18 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Oztro Process Order', {
+	setup: function (frm) {
+		frm.set_query("workstation", function () {
+			return {
+				filters: {"oztro_department": frm.doc.department}
+			}
+		});
+		frm.set_query("process_name", function () {
+			return {
+				filters: {"department": frm.doc.department, "process_type": frm.doc.process_type}
+			}
+		});
+	},
 	refresh: function(frm){
 		if(!frm.doc.__islocal && frm.doc.status == 'Open'){
 			var start_btn = frm.add_custom_button(__('Start'), function(){
@@ -16,13 +28,6 @@ frappe.ui.form.on('Oztro Process Order', {
 			finish_btn.addClass('btn-primary')
 		}
 	},
-	process_type: function(frm){
-		frm.set_query("process_name", function () {
-			return {
-				filters: {"department": frm.doc.department, "process_type": frm.doc.process_type}
-			}
-		});
-	},
 	department: function(frm){
 		if(frm.doc.department){
 			frappe.call({
@@ -36,11 +41,6 @@ frappe.ui.form.on('Oztro Process Order', {
 					frappe.model.set_value(frm.doctype,frm.docname, "fg_warehouse", data.message.fg_warehouse);
 					frappe.model.set_value(frm.doctype,frm.docname, "scrap_warehouse", data.message.scrap_warehouse);
 					frappe.model.set_value(frm.doctype,frm.docname, "src_warehouse", data.message.src_warehouse);
-				}
-			});
-			frm.set_query("process_name", function () {
-				return {
-					filters: {"department": frm.doc.department, "process_type": frm.doc.process_type}
 				}
 			});
 		}
