@@ -9,6 +9,14 @@ from frappe.utils import get_datetime, time_diff_in_hours
 from frappe import _
 
 class OztroProcessOrder(Document):
+	def on_submit(self):
+		if not self.wip_warehouse:
+			frappe.throw(_("Work-in-Progress Warehouse is required before Submit"))
+		if not self.fg_warehouse:
+			frappe.throw(_("Target Warehouse is required before Submit"))
+		self.status= "Submitted"
+		self.save()
+
 	def get_process_details(self):
 		#	Set costing_method
 		self.costing_method = frappe.db.get_value("Oztro Process", self.process_name, "costing_method")
@@ -23,7 +31,7 @@ class OztroProcessOrder(Document):
 				self.add_item_in_table(process.scrap, "scrap")
 
 	def start_finish_processing(self, status):
-		if status == "Finish":
+		if status == "In Process":
 			if not self.end_dt:
 				self.end_dt = get_datetime()
 		self.save()
@@ -152,10 +160,10 @@ class OztroProcessOrder(Document):
 	def make_stock_entry(self, status):
 		stock_entry = frappe.new_doc("Stock Entry")
 		stock_entry.oztro_process_order = self.name
-		if status == "Start":
+		if status == "Submitted":
 			stock_entry.purpose = "Material Transfer for Manufacture"
 			stock_entry = self.set_se_items_start(stock_entry)
-		if status == "Finish":
+		if status == "In Process":
 			stock_entry.purpose = "Manufacture"
 			stock_entry = self.set_se_items_finish(stock_entry)
 
@@ -172,9 +180,9 @@ class OztroProcessOrder(Document):
 def submit_se(doc, method):
 	if doc.oztro_process_order:
 		oztro_po = frappe.get_doc("Oztro Process Order", doc.oztro_process_order)
-		if oztro_po.status == "Open":
-			oztro_po.status = "Start"
+		if oztro_po.status == "Submitted":
+			oztro_po.status = "In Process"
 			oztro_po.start_dt = get_datetime()
-		elif oztro_po.status == "Start":
-			oztro_po.status = "Finish"
+		elif oztro_po.status == "In Process":
+			oztro_po.status = "Completed"
 		oztro_po.save()

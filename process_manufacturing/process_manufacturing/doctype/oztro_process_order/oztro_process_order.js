@@ -15,14 +15,14 @@ frappe.ui.form.on('Oztro Process Order', {
 		});
 	},
 	refresh: function(frm){
-		if(!frm.doc.__islocal && frm.doc.status == 'Open'){
+		if(!frm.doc.__islocal && frm.doc.status == 'Submitted'){
 			var start_btn = frm.add_custom_button(__('Start'), function(){
 				start_process_order(frm)
 			});
 			start_btn.addClass('btn-primary');
 		}
-		if(!frm.doc.__islocal && frm.doc.status == 'Start'){
-			var finish_btn = frm.add_custom_button(__('Finish'), function(){
+		if(!frm.doc.__islocal && frm.doc.status == 'In Process'){
+			var finish_btn = frm.add_custom_button(__('Complete'), function(){
 				finish_process_order(frm)
 			});
 			finish_btn.addClass('btn-primary')
@@ -73,7 +73,7 @@ var start_process_order = function(frm){
 			doc: frm.doc,
 			method: "start_finish_processing",
 			args:{
-				"status": "Start"
+				"status": "Submitted"
 			},
 			callback: function(r) {
 				frm.reload_doc()
@@ -87,13 +87,13 @@ var start_process_order = function(frm){
 var finish_process_order = function(frm){
 	if(frm.doc.finished_products){
 		frappe.confirm(
-				'Are you sure to Finish?',
+				'Are you sure to complete this Order?',
 				function(){
 					frappe.call({
 						doc: frm.doc,
 						method: "start_finish_processing",
 						args:{
-							"status": "Finish"
+							"status": "In Process"
 						},
 						callback: function(r) {
 							frm.reload_doc()
