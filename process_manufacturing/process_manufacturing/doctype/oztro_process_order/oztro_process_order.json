@@ -718,7 +718,7 @@
   }, 
   {
    "allow_bulk_edit": 0, 
-   "allow_on_submit": 1, 
+   "allow_on_submit": 0, 
    "bold": 0, 
    "collapsible": 0, 
    "columns": 0, 
@@ -777,7 +777,7 @@
   }, 
   {
    "allow_bulk_edit": 0, 
-   "allow_on_submit": 1, 
+   "allow_on_submit": 0, 
    "bold": 0, 
    "collapsible": 0, 
    "columns": 0, 
@@ -847,7 +847,7 @@
  "issingle": 0, 
  "istable": 0, 
  "max_attachments": 0, 
- "modified": "2017-10-07 15:46:30.709689", 
+ "modified": "2017-10-08 11:27:05.117151", 
  "modified_by": "Administrator", 
  "module": "Process Manufacturing", 
  "name": "Oztro Process Order", 

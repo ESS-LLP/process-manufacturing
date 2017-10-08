@@ -33,6 +33,7 @@ class OztroProcessOrder(Document):
 		if status == "In Process":
 			if not self.end_dt:
 				self.end_dt = get_datetime()
+		self.flags.ignore_validate_update_after_submit = True
 		self.save()
 		return self.make_stock_entry(status)
 
