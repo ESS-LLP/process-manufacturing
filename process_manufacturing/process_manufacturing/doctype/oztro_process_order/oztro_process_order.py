@@ -14,8 +14,7 @@ class OztroProcessOrder(Document):
 			frappe.throw(_("Work-in-Progress Warehouse is required before Submit"))
 		if not self.fg_warehouse:
 			frappe.throw(_("Target Warehouse is required before Submit"))
-		self.status= "Submitted"
-		self.save()
+		frappe.db.set(self, 'status', 'Submitted')
 
 	def get_process_details(self):
 		#	Set costing_method
@@ -83,23 +82,25 @@ class OztroProcessOrder(Document):
 		qty_of_total_production = 0
 		total_sale_value = 0
 		for item in self.finished_products:
-			qty_of_total_production = float(qty_of_total_production) + item.quantity
-			if self.costing_method == "Relative Sales Value":
-				sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
-				if sale_value_of_pdt:
-					total_sale_value += float(sale_value_of_pdt) * item.quantity
-				else:
-					frappe.throw(_("Selling price not set for item {0}").format(item.item))
+			if item.quantity > 0:
+				qty_of_total_production = float(qty_of_total_production) + item.quantity
+				if self.costing_method == "Relative Sales Value":
+					sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
+					if sale_value_of_pdt:
+						total_sale_value += float(sale_value_of_pdt) * item.quantity
+					else:
+						frappe.throw(_("Selling price not set for item {0}").format(item.item))
 
 		#TODO optionally include/exclude scrap from total cost/qty
 		for item in self.scrap:
-			qty_of_total_production = float(qty_of_total_production + item.quantity)
-			if self.costing_method == "Relative Sales Value":
-				sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
-				if sale_value_of_pdt:
-					total_sale_value += float(sale_value_of_pdt) * item.quantity
-				else:
-					frappe.throw(_("Selling price not set for item {0}").format(item.item))
+			if item.quantity > 0:
+				qty_of_total_production = float(qty_of_total_production + item.quantity)
+				if self.costing_method == "Relative Sales Value":
+					sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
+					if sale_value_of_pdt:
+						total_sale_value += float(sale_value_of_pdt) * item.quantity
+					else:
+						frappe.throw(_("Selling price not set for item {0}").format(item.item))
 
 		#add Stock Entry Items for produced goods and scrap
 		for item in self.finished_products:
@@ -112,18 +113,18 @@ class OztroProcessOrder(Document):
 		return se
 
 	def set_se_items(self, se, item, s_wh, t_wh, calc_basic_rate=False, qty_of_total_production=None, total_sale_value=None, production_cost=None):
-		expense_account, cost_center = frappe.db.get_values("Company", self.company, \
-				["default_expense_account", "cost_center"])[0]
-		item_name, stock_uom, description, item_expense_account, item_cost_center = frappe.db.get_values("Item", item.item, \
-		["item_name", "stock_uom", "description", "expense_account", "buying_cost_center"])[0]
-
-		if not expense_account and not item_expense_account:
-			frappe.throw(_("Please update default Default Cost of Goods Sold Account for company {0}").format(self.company))
-
-		if not cost_center and not item_cost_center:
-			frappe.throw(_("Please update default Cost Center for company {0}").format(self.company))
-
 		if item.quantity > 0:
+			expense_account, cost_center = frappe.db.get_values("Company", self.company, \
+					["default_expense_account", "cost_center"])[0]
+			item_name, stock_uom, description, item_expense_account, item_cost_center = frappe.db.get_values("Item", item.item, \
+			["item_name", "stock_uom", "description", "expense_account", "buying_cost_center"])[0]
+
+			if not expense_account and not item_expense_account:
+				frappe.throw(_("Please update default Default Cost of Goods Sold Account for company {0}").format(self.company))
+
+			if not cost_center and not item_cost_center:
+				frappe.throw(_("Please update default Cost Center for company {0}").format(self.company))
+
 			se_item = se.append("items")
 			se_item.item_code = item.item
 			se_item.qty = item.quantity
@@ -154,7 +155,6 @@ class OztroProcessOrder(Document):
 				elif self.costing_method == "Relative Sales Value":
 					sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
 					se_item.basic_rate = (float(sale_value_of_pdt) * float(production_cost)) / float(total_sale_value)
-
 		return se
 
 	def make_stock_entry(self, status):
