@@ -11,10 +11,11 @@ app_color = "grey"
 app_email = "info@earthianslive.com"
 app_license = "MIT"
 
-fixtures = ["Custom Field"]
+fixtures = [{"dt":"Custom Field", "filters": [["fieldname", "in", ("oztro_process_order", "oztro_department")]]}]
+
 doc_events = {
  	"Stock Entry": {
- 		"on_submit": "process_manufacturing.process_manufacturing.doctype.oztro_process_order.oztro_process_order.submit_se"
+               "on_submit": "process_manufacturing.process_manufacturing.doctype.oztro_process_order.oztro_process_order.submit_se"
     }
 }
 # Includes in <head>
