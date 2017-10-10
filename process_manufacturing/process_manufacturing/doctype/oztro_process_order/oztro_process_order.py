@@ -218,6 +218,7 @@ def manage_se_submit(se, po):
 		po.status = "Completed"
 	elif po.status in ["Completed", "Cancelled"]:
 		frappe.throw("You cannot make entries against Completed/Cancelled Process Orders")
+	po.flags.ignore_validate_update_after_submit = True
 	po.save()
 
 def manage_se_cancel(se, po):
@@ -231,6 +232,7 @@ def manage_se_cancel(se, po):
 			frappe.throw("Please cancel the production stock entry first.")
 	else:
 		frappe.throw("Process order status must be In Process or Completed")
+	po.flags.ignore_validate_update_after_submit = True
 	po.save()
 
 def validate_se_qty(se, po):
@@ -250,7 +252,7 @@ def manage_se_changes(doc, method):
 				po_items = oztro_po.materials
 				po_items.extend(oztro_po.finished_products)
 				po_items.extend(oztro_po.scrap)
-				validate_items(doc.items, all_items)
+				validate_items(doc.items, po_items)
 			validate_se_qty(doc, oztro_po)
 			manage_se_submit(doc, oztro_po)
 		elif(method=="on_cancel"):
