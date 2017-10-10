@@ -26,9 +26,17 @@ frappe.ui.form.on('Oztro Process Order', {
 		if(!frm.doc.__islocal && frm.doc.status == 'In Process'){
 			var finish_btn = frm.add_custom_button(__('Complete'), function(){
 				prompt_for_qty(frm, "finished_products", "Enter Produced Quantity", true, function () {
+					if(frm.doc.scrap){
 							prompt_for_qty(frm, "scrap", "Enter Scrap Quantity", false, function() {
+								prompt_for_hours(frm, function() {
+									process_production(frm, "In Process");
+								});
+							});
+						}else {
+							prompt_for_hours(frm, function() {
 								process_production(frm, "In Process");
 							});
+						}
 						});
 			});
 			finish_btn.addClass('btn-primary')
@@ -68,6 +76,9 @@ frappe.ui.form.on('Oztro Process Order', {
 });
 
 var prompt_for_qty = function (frm, table, title, qty_required, callback) {
+	// if(table && !qty_required){
+	// 	callback();
+	// }
 	let fields = []
 	$.each(frm.doc[table] || [], function(i, row) {
 		fields.push({
@@ -95,6 +106,25 @@ var prompt_for_qty = function (frm, table, title, qty_required, callback) {
 	);
 }
 
+var prompt_for_hours = function(frm, callback){
+	//TODO datetime diff returns 0 for minutes
+	let hours = frappe.datetime.get_hour_diff(frappe.datetime.now_datetime(), frm.doc.start_dt)
+	frappe.prompt(
+		[{fieldtype: "Float",
+			label: __("Hours"),
+			fieldname: "hours",
+			description: __("Hours as per start of process is {0}", [hours]),
+		}],
+		function(data) {
+			let item_qty = false;
+			frappe.model.set_value(frm.doctype, frm.doc.name, "operation_hours", data.hours);
+			callback();
+		},
+		__("Update hours of operation"),
+		__("Confirm")
+	);
+}
+
 var process_production = function (frm, status) {
 	frappe.call({
 		doc: frm.doc,
@@ -103,8 +133,10 @@ var process_production = function (frm, status) {
 			"status": status
 		},
 		callback: function(r) {
-			var doclist = frappe.model.sync(r.message);
-			frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+			if (r.message){
+				var doclist = frappe.model.sync(r.message);
+				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+			}
 		}
 	});
 }

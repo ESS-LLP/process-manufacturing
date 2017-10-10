@@ -14,7 +14,17 @@ class OztroProcessOrder(Document):
 			frappe.throw(_("Work-in-Progress Warehouse is required before Submit"))
 		if not self.fg_warehouse:
 			frappe.throw(_("Target Warehouse is required before Submit"))
+		if self.scrap and not self.scrap_warehouse:
+			frappe.throw(_("Scrap Warehouse is required before submit"))
 		frappe.db.set(self, 'status', 'Submitted')
+
+	def on_cancel(self):
+		stock_entry = frappe.db.sql("""select name from `tabStock Entry`
+			where oztro_process_order = %s and docstatus = 1""", self.name)
+		if stock_entry:
+			frappe.throw(_("Cannot cancel because submitted Stock Entry \
+			{0} exists").format(stock_entry[0][0]))
+		frappe.db.set(self, 'status', 'Cancelled')
 
 	def get_process_details(self):
 		#	Set costing_method
@@ -75,7 +85,11 @@ class OztroProcessOrder(Document):
 		#no timesheet entries for Oztro, calculate operating cost based on workstation hourly rate and process start, end
 		hourly_rate = frappe.db.get_value("Workstation", self.workstation, "hour_rate")
 		if hourly_rate:
-			hours = time_diff_in_hours(self.end_dt, self.start_dt)
+			if self.operation_hours > 0:
+				hours = self.operation_hours
+			else:
+				hours = time_diff_in_hours(self.end_dt, self.start_dt)
+				frappe.db.set(self, 'operation_hours', hours)
 			operating_cost = hours * float(hourly_rate)
 		production_cost = raw_material_cost + operating_cost
 
@@ -177,13 +191,67 @@ class OztroProcessOrder(Document):
 			po_item.item = item.item
 			po_item.item_name = item.item_name
 
+def validate_items(se_items, po_items):
+	#validate for items not in process order
+	for se_item in se_items:
+		if not filter(lambda x: x.item == se_item.item_code, po_items):
+			frappe.throw(_("Item {0} - {1} cannot be part of this Stock Entry").format(se_item.item_code, se_item.item_name))
+
+def validate_material_qty(se_items, po_items):
+	#TODO allow multiple raw material transfer?
+	for material in po_items:
+		qty = 0
+		for item in se_items:
+			if(material.item == item.item_code):
+				qty += item.qty
+		if(qty != material.quantity):
+			frappe.throw(_("Total quantity of Item {0} - {1} should be {2}"\
+			).format(material.item, material.item, material.quantity))
+
+def manage_se_submit(se, po):
+	if po.docstatus == 0:
+		frappe.throw(_("Submit the  Process Order {0} to make Stock Entries").format(po.name))
+	if po.status == "Submitted":
+		po.status = "In Process"
+		po.start_dt = get_datetime()
+	elif po.status == "In Process":
+		po.status = "Completed"
+	elif po.status in ["Completed", "Cancelled"]:
+		frappe.throw("You cannot make entries against Completed/Cancelled Process Orders")
+	po.save()
+
+def manage_se_cancel(se, po):
+	if po.status == "In Process":
+		po.status = "Submitted"
+	elif(po.status == "Completed"):
+		try:
+			validate_material_qty(se.items, po.finished_products)
+			po.status = "In Process"
+		except:
+			frappe.throw("Please cancel the production stock entry first.")
+	else:
+		frappe.throw("Process order status must be In Process or Completed")
+	po.save()
+
+def validate_se_qty(se, po):
+	validate_material_qty(se.items, po.materials)
+	if po.status == "In Process":
+		validate_material_qty(se.items, po.finished_products)
+		validate_material_qty(se.items, po.scrap)
+
 @frappe.whitelist()
-def submit_se(doc, method):
+def manage_se_changes(doc, method):
 	if doc.oztro_process_order:
 		oztro_po = frappe.get_doc("Oztro Process Order", doc.oztro_process_order)
-		if oztro_po.status == "Submitted":
-			oztro_po.status = "In Process"
-			oztro_po.start_dt = get_datetime()
-		elif oztro_po.status == "In Process":
-			oztro_po.status = "Completed"
-		oztro_po.save()
+		if(method=="on_submit"):
+			if oztro_po.status == "Submitted":
+				validate_items(doc.items, oztro_po.materials)
+			elif oztro_po.status == "In Process":
+				po_items = oztro_po.materials
+				po_items.extend(oztro_po.finished_products)
+				po_items.extend(oztro_po.scrap)
+				validate_items(doc.items, all_items)
+			validate_se_qty(doc, oztro_po)
+			manage_se_submit(doc, oztro_po)
+		elif(method=="on_cancel"):
+			manage_se_cancel(doc, oztro_po)
