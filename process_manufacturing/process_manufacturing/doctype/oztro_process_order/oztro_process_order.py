@@ -106,24 +106,27 @@ class OztroProcessOrder(Document):
 					else:
 						frappe.throw(_("Selling price not set for item {0}").format(item.item))
 
-		#TODO optionally include/exclude scrap from total cost/qty
-		for item in self.scrap:
-			if item.quantity > 0:
-				qty_of_total_production = float(qty_of_total_production + item.quantity)
-				if self.costing_method == "Relative Sales Value":
-					sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
-					if sale_value_of_pdt:
-						total_sale_value += float(sale_value_of_pdt) * item.quantity
-					else:
-						frappe.throw(_("Selling price not set for item {0}").format(item.item))
+		value_scrap = frappe.db.get_value("Oztro Process", self.process_name, "value_scrap")
+		if value_scrap:
+			for item in self.scrap:
+				if item.quantity > 0:
+					qty_of_total_production = float(qty_of_total_production + item.quantity)
+					if self.costing_method == "Relative Sales Value":
+						sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code":item.item}, "price_list_rate")
+						if sale_value_of_pdt:
+							total_sale_value += float(sale_value_of_pdt) * item.quantity
+						else:
+							frappe.throw(_("Selling price not set for item {0}").format(item.item))
 
 		#add Stock Entry Items for produced goods and scrap
 		for item in self.finished_products:
 			se = self.set_se_items(se, item, None, se.to_warehouse, True, qty_of_total_production, total_sale_value, production_cost)
 
-		#TODO optionally include/exclude scrap from rate calc
 		for item in self.scrap:
-			se = self.set_se_items(se, item, None, self.scrap_warehouse, True, qty_of_total_production, total_sale_value, production_cost)
+			if value_scrap:
+				se = self.set_se_items(se, item, None, self.scrap_warehouse, True, qty_of_total_production, total_sale_value, production_cost)
+			else:
+				se = self.set_se_items(se, item, None, self.scrap_warehouse, False)
 
 		return se
 
