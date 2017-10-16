@@ -28,6 +28,7 @@ estimate of their sale value can be easily made.
 Note: This is a work in progress.
 
 <img src="process_manufacturing/public/images/oztro_process_manufacturing.gif">
+
 #### License
 
 MIT
