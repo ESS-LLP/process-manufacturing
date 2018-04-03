@@ -449,10 +449,10 @@
  "issingle": 0, 
  "istable": 0, 
  "max_attachments": 0, 
- "modified": "2018-04-03 11:42:05.324741", 
+ "modified": "2018-04-03 12:15:15.745751", 
  "modified_by": "Administrator", 
  "module": "Process Manufacturing", 
- "name": "Oztro Process", 
+ "name": "Process Definition", 
  "name_case": "Title Case", 
  "owner": "Administrator", 
  "permissions": [

@@ -28,7 +28,7 @@ def get_data():
 			"items": [
 				{
 					"type": "doctype",
-					"name": "Oztro Process",
+					"name": "Process Definition",
 					"description": _("Process Definition."),
 				},
 				{

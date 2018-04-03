@@ -28,9 +28,9 @@ class ProcessOrder(Document):
 
 	def get_process_details(self):
 		#	Set costing_method
-		self.costing_method = frappe.db.get_value("Oztro Process", self.process_name, "costing_method")
+		self.costing_method = frappe.db.get_value("Process Definition", self.process_name, "costing_method")
 		#	Set Child Tables
-		process = frappe.get_doc("Oztro Process", self.process_name)
+		process = frappe.get_doc("Process Definition", self.process_name)
 		if process:
 			if process.materials:
 				self.add_item_in_table(process.materials, "materials")
@@ -106,7 +106,7 @@ class ProcessOrder(Document):
 					else:
 						frappe.throw(_("Selling price not set for item {0}").format(item.item))
 
-		value_scrap = frappe.db.get_value("Oztro Process", self.process_name, "value_scrap")
+		value_scrap = frappe.db.get_value("Process Definition", self.process_name, "value_scrap")
 		if value_scrap:
 			for item in self.scrap:
 				if item.quantity > 0:
