@@ -11,7 +11,7 @@ app_color = "grey"
 app_email = "info@earthianslive.com"
 app_license = "MIT"
 
-fixtures = [{"dt":"Custom Field", "filters": [["fieldname", "in", ("oztro_process_order", "oztro_department")]]}]
+fixtures = [{"dt":"Custom Field", "filters": [["fieldname", "in", ("process_order", "department")]]}]
 
 doc_events = {
  	"Stock Entry": {

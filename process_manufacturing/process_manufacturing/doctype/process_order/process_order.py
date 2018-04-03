@@ -20,7 +20,7 @@ class ProcessOrder(Document):
 
 	def on_cancel(self):
 		stock_entry = frappe.db.sql("""select name from `tabStock Entry`
-			where oztro_process_order = %s and docstatus = 1""", self.name)
+			where process_order = %s and docstatus = 1""", self.name)
 		if stock_entry:
 			frappe.throw(_("Cannot cancel because submitted Stock Entry \
 			{0} exists").format(stock_entry[0][0]))
@@ -66,7 +66,7 @@ class ProcessOrder(Document):
 		se.from_warehouse = self.wip_warehouse
 		se.to_warehouse = self.fg_warehouse
 
-		se_materials = frappe.get_doc("Stock Entry",{"oztro_process_order": self.name, "docstatus": '1'})
+		se_materials = frappe.get_doc("Stock Entry",{"process_order": self.name, "docstatus": '1'})
 		#get items to consume from previous stock entry or append to items
 		#TODO allow multiple raw material transfer
 		raw_material_cost = 0
@@ -177,7 +177,7 @@ class ProcessOrder(Document):
 
 	def make_stock_entry(self, status):
 		stock_entry = frappe.new_doc("Stock Entry")
-		stock_entry.oztro_process_order = self.name
+		stock_entry.process_order = self.name
 		if status == "Submitted":
 			stock_entry.purpose = "Material Transfer for Manufacture"
 			stock_entry = self.set_se_items_start(stock_entry)
@@ -246,8 +246,8 @@ def validate_se_qty(se, po):
 
 @frappe.whitelist()
 def manage_se_changes(doc, method):
-	if doc.oztro_process_order:
-		po = frappe.get_doc("Process Order", doc.oztro_process_order)
+	if doc.process_order:
+		po = frappe.get_doc("Process Order", doc.process_order)
 		if(method=="on_submit"):
 			if po.status == "Submitted":
 				validate_items(doc.items, po.materials)

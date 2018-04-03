@@ -8,7 +8,7 @@ frappe.ui.form.on('Process Definition', {
 	setup: function (frm) {
 		frm.set_query("workstation", function () {
 			return {
-				filters: {"oztro_department": frm.doc.department}
+				filters: {"department": frm.doc.department}
 			}
 		});
 	}

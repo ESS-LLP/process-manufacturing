@@ -5,7 +5,7 @@ frappe.ui.form.on('Process Order', {
 	setup: function (frm) {
 		frm.set_query("workstation", function () {
 			return {
-				filters: {"oztro_department": frm.doc.department}
+				filters: {"department": frm.doc.department}
 			}
 		});
 		frm.set_query("process_name", function () {
