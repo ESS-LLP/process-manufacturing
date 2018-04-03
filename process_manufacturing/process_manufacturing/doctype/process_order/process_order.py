@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2017, earthians and contributors
+# Copyright (c) 2018, earthians and contributors
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
@@ -8,7 +8,7 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, time_diff_in_hours
 from frappe import _
 
-class OztroProcessOrder(Document):
+class ProcessOrder(Document):
 	def on_submit(self):
 		if not self.wip_warehouse:
 			frappe.throw(_("Work-in-Progress Warehouse is required before Submit"))
@@ -82,7 +82,7 @@ class OztroProcessOrder(Document):
 				se = self.set_se_items(se, item, se.from_warehouse, None, False)
 				#TODO calc raw_material_cost
 
-		#no timesheet entries for Oztro, calculate operating cost based on workstation hourly rate and process start, end
+		#no timesheet entries, calculate operating cost based on workstation hourly rate and process start, end
 		hourly_rate = frappe.db.get_value("Workstation", self.workstation, "hour_rate")
 		if hourly_rate:
 			if self.operation_hours > 0:
@@ -247,16 +247,16 @@ def validate_se_qty(se, po):
 @frappe.whitelist()
 def manage_se_changes(doc, method):
 	if doc.oztro_process_order:
-		oztro_po = frappe.get_doc("Oztro Process Order", doc.oztro_process_order)
+		po = frappe.get_doc("Process Order", doc.oztro_process_order)
 		if(method=="on_submit"):
-			if oztro_po.status == "Submitted":
-				validate_items(doc.items, oztro_po.materials)
-			elif oztro_po.status == "In Process":
-				po_items = oztro_po.materials
-				po_items.extend(oztro_po.finished_products)
-				po_items.extend(oztro_po.scrap)
+			if po.status == "Submitted":
+				validate_items(doc.items, po.materials)
+			elif po.status == "In Process":
+				po_items = po.materials
+				po_items.extend(po.finished_products)
+				po_items.extend(po.scrap)
 				validate_items(doc.items, po_items)
-			validate_se_qty(doc, oztro_po)
-			manage_se_submit(doc, oztro_po)
+			validate_se_qty(doc, po)
+			manage_se_submit(doc, po)
 		elif(method=="on_cancel"):
-			manage_se_cancel(doc, oztro_po)
+			manage_se_cancel(doc, po)

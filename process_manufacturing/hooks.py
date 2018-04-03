@@ -15,8 +15,8 @@ fixtures = [{"dt":"Custom Field", "filters": [["fieldname", "in", ("oztro_proces
 
 doc_events = {
  	"Stock Entry": {
-        "on_submit": "process_manufacturing.process_manufacturing.doctype.oztro_process_order.oztro_process_order.manage_se_changes",
-        "on_cancel": "process_manufacturing.process_manufacturing.doctype.oztro_process_order.oztro_process_order.manage_se_changes"
+        "on_submit": "process_manufacturing.process_manufacturing.doctype.process_order.process_order.manage_se_changes",
+        "on_cancel": "process_manufacturing.process_manufacturing.doctype.process_order.process_order.manage_se_changes"
     }
 }
 # Includes in <head>

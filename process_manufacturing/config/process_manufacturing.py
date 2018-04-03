@@ -8,7 +8,7 @@ def get_data():
 			"items": [
                 {
 					"type": "doctype",
-					"name": "Oztro Process Order",
+					"name": "Process Order",
 					"description": _("Process Manufacturing Order."),
 				},
 				{

@@ -1,7 +1,7 @@
-// Copyright (c) 2017, earthians and contributors
+// Copyright (c) 2018, earthians and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Oztro Process Order', {
+frappe.ui.form.on('Process Order', {
 	setup: function (frm) {
 		frm.set_query("workstation", function () {
 			return {
