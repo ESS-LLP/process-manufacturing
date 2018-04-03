@@ -38,8 +38,8 @@ def get_data():
 				},
                 {
 					"type": "doctype",
-					"name": "Oztro Manufacturing Department",
-					"description": _("Oztro Manufacturing Department"),
+					"name": "Manufacturing Department",
+					"description": _("Manufacturing Department"),
 				},
                 {
 					"type": "doctype",

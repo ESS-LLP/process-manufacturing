@@ -47,7 +47,7 @@ frappe.ui.form.on('Oztro Process Order', {
 			frappe.call({
 				"method": "frappe.client.get",
 				args: {
-					doctype: "Oztro Manufacturing Department",
+					doctype: "Manufacturing Department",
 					name: frm.doc.department
 				},
 				callback: function (data) {
