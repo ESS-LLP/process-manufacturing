@@ -2,15 +2,15 @@
 // rename this file from _test_[name] to test_[name] to activate
 // and remove above this line
 
-QUnit.test("test: Oztro Process Type", function (assert) {
+QUnit.test("test: Process Type", function (assert) {
 	let done = assert.async();
 
 	// number of asserts
 	assert.expect(1);
 
 	frappe.run_serially([
-		// insert a new Oztro Process Type
-		() => frappe.tests.make('Oztro Process Type', [
+		// insert a new Process Type
+		() => frappe.tests.make('Process Type', [
 			// values to be set
 			{key: 'value'}
 		]),

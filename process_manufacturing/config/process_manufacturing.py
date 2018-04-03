@@ -33,8 +33,8 @@ def get_data():
 				},
 				{
 					"type": "doctype",
-					"name": "Oztro Process Type",
-					"description": _("Oztro Process Type."),
+					"name": "Process Type",
+					"description": _("Process Type."),
 				},
                 {
 					"type": "doctype",
