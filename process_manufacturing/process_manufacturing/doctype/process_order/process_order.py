@@ -61,7 +61,7 @@ class ProcessOrder(Document):
 			if self.src_warehouse:
 				src_wh = self.src_warehouse
 			else:
-				src_wh = frappe.db.get_value("Item Default", {'parent': item.item, 'company': self.company}, \
+				src_wh = frappe.db.get_value("Item Default", {'parent': item.item, 'company': self.company},
 											 ["default_warehouse"])
 			# create stock entry lines
 			se = self.set_se_items(se, item, src_wh, self.wip_warehouse, False)
@@ -143,13 +143,13 @@ class ProcessOrder(Document):
 	def set_se_items(self, se, item, s_wh, t_wh, calc_basic_rate=False, qty_of_total_production=None,
 					 total_sale_value=None, production_cost=None):
 		if item.quantity > 0:
-			expense_account, cost_center = frappe.db.get_values("Company", self.company, \
-																["default_expense_account", "cost_center"])[0]
-			item_name, stock_uom, description = frappe.db.get_values("Item", item.item, \
-																	 ["item_name", "stock_uom", "description"])[0]
+			expense_account, cost_center = \
+			frappe.db.get_values("Company", self.company, ["default_expense_account", "cost_center"])[0]
+			item_name, stock_uom, description = \
+			frappe.db.get_values("Item", item.item, ["item_name", "stock_uom", "description"])[0]
 
 			item_expense_account, item_cost_center = frappe.db.get_value("Item Default",
-																		 {'parent': item.item, 'company': self.company}, \
+																		 {'parent': item.item, 'company': self.company},
 																		 ["expense_account", "buying_cost_center"])
 
 			if not expense_account and not item_expense_account:
