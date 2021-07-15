@@ -17,6 +17,7 @@ class ProcessOrder(Document):
 			frappe.throw(_("Target Warehouse is required before Submit"))
 		if self.scrap and not self.scrap_warehouse:
 			frappe.throw(_("Scrap Warehouse is required before submit"))
+
 		frappe.db.set(self, 'status', 'Submitted')
 
 	def on_cancel(self):
@@ -45,14 +46,17 @@ class ProcessOrder(Document):
 		if status == "In Process":
 			if not self.end_dt:
 				self.end_dt = get_datetime()
+
 		self.flags.ignore_validate_update_after_submit = True
 		self.save()
+
 		return self.make_stock_entry(status)
 
 	def set_se_items_start(self, se):
 		# set source and target warehouse
 		se.from_warehouse = self.src_warehouse
 		se.to_warehouse = self.wip_warehouse
+
 		for item in self.materials:
 			if self.src_warehouse:
 				src_wh = self.src_warehouse
@@ -191,11 +195,13 @@ class ProcessOrder(Document):
 	def make_stock_entry(self, status):
 		stock_entry = frappe.new_doc("Stock Entry")
 		stock_entry.process_order = self.name
+
 		if status == "Submitted":
-			stock_entry.purpose = "Material Transfer for Manufacture"
+			stock_entry.stock_entry_type = "Material Transfer for Manufacture"
 			stock_entry = self.set_se_items_start(stock_entry)
+
 		if status == "In Process":
-			stock_entry.purpose = "Manufacture"
+			stock_entry.stock_entry_type = "Manufacture"
 			stock_entry = self.set_se_items_finish(stock_entry)
 
 		return stock_entry.as_dict()
