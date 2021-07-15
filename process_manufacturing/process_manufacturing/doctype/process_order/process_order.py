@@ -144,9 +144,9 @@ class ProcessOrder(Document):
 					 total_sale_value=None, production_cost=None):
 		if item.quantity > 0:
 			expense_account, cost_center = \
-			frappe.db.get_values("Company", self.company, ["default_expense_account", "cost_center"])[0]
+				frappe.db.get_values("Company", self.company, ["default_expense_account", "cost_center"])[0]
 			item_name, stock_uom, description = \
-			frappe.db.get_values("Item", item.item, ["item_name", "stock_uom", "description"])[0]
+				frappe.db.get_values("Item", item.item, ["item_name", "stock_uom", "description"])[0]
 
 			item_expense_account, item_cost_center = frappe.db.get_value("Item Default",
 																		 {'parent': item.item, 'company': self.company},
