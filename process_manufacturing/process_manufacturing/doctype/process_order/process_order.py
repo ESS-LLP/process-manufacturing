@@ -17,6 +17,7 @@ class ProcessOrder(Document):
 			frappe.throw(_("Target Warehouse is required before Submit"))
 		if self.scrap and not self.scrap_warehouse:
 			frappe.throw(_("Scrap Warehouse is required before submit"))
+
 		frappe.db.set(self, 'status', 'Submitted')
 
 	def on_cancel(self):
@@ -45,19 +46,22 @@ class ProcessOrder(Document):
 		if status == "In Process":
 			if not self.end_dt:
 				self.end_dt = get_datetime()
+
 		self.flags.ignore_validate_update_after_submit = True
 		self.save()
+
 		return self.make_stock_entry(status)
 
 	def set_se_items_start(self, se):
 		# set source and target warehouse
 		se.from_warehouse = self.src_warehouse
 		se.to_warehouse = self.wip_warehouse
+
 		for item in self.materials:
 			if self.src_warehouse:
 				src_wh = self.src_warehouse
 			else:
-				src_wh = frappe.db.get_value("Item Default", {'parent': item.item, 'company': self.company}, \
+				src_wh = frappe.db.get_value("Item Default", {'parent': item.item, 'company': self.company},
 											 ["default_warehouse"])
 			# create stock entry lines
 			se = self.set_se_items(se, item, src_wh, self.wip_warehouse, False)
@@ -139,13 +143,13 @@ class ProcessOrder(Document):
 	def set_se_items(self, se, item, s_wh, t_wh, calc_basic_rate=False, qty_of_total_production=None,
 					 total_sale_value=None, production_cost=None):
 		if item.quantity > 0:
-			expense_account, cost_center = frappe.db.get_values("Company", self.company, \
-																["default_expense_account", "cost_center"])[0]
-			item_name, stock_uom, description = frappe.db.get_values("Item", item.item, \
-																	 ["item_name", "stock_uom", "description"])[0]
+			expense_account, cost_center = \
+				frappe.db.get_values("Company", self.company, ["default_expense_account", "cost_center"])[0]
+			item_name, stock_uom, description = \
+				frappe.db.get_values("Item", item.item, ["item_name", "stock_uom", "description"])[0]
 
 			item_expense_account, item_cost_center = frappe.db.get_value("Item Default",
-																		 {'parent': item.item, 'company': self.company}, \
+																		 {'parent': item.item, 'company': self.company},
 																		 ["expense_account", "buying_cost_center"])
 
 			if not expense_account and not item_expense_account:
@@ -191,11 +195,13 @@ class ProcessOrder(Document):
 	def make_stock_entry(self, status):
 		stock_entry = frappe.new_doc("Stock Entry")
 		stock_entry.process_order = self.name
+
 		if status == "Submitted":
-			stock_entry.purpose = "Material Transfer for Manufacture"
+			stock_entry.stock_entry_type = "Material Transfer for Manufacture"
 			stock_entry = self.set_se_items_start(stock_entry)
+
 		if status == "In Process":
-			stock_entry.purpose = "Manufacture"
+			stock_entry.stock_entry_type = "Manufacture"
 			stock_entry = self.set_se_items_finish(stock_entry)
 
 		return stock_entry.as_dict()

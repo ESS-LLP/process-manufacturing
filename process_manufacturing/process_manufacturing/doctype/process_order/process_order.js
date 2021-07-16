@@ -2,6 +2,14 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Process Order', {
+    before_load: function (frm) {
+        if (frm.is_new()) {
+            frm.set_value('status', 'Draft');
+            frm.set_value('start_dt', undefined);
+            frm.set_value('end_dt', undefined);
+            frm.set_value('operation_hours', undefined);
+        }
+    },
     setup: function (frm) {
         frm.set_query("workstation", function () {
             return {
