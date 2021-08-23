@@ -185,7 +185,7 @@ class ProcessOrder(Document):
 				se_item.set(f, item_details.get(f))
 
 			if calc_basic_rate:
-				if self.costing_method == "Physical Measurement":
+				if self.costing_method == "Value Based Costing":
 					se_item.basic_rate = production_cost / qty_of_total_production
 				elif self.costing_method == "Relative Sales Value":
 					sale_value_of_pdt = frappe.db.get_value("Item Price", {"item_code": item.item}, "price_list_rate")
